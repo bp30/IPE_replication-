@@ -4,7 +4,7 @@ author: "Bruce Peng"
 date: "3 April 2019"
 output: html_document
 ---
-Below are the analyses that I would do for the IPE&2 studies, in essense we conducted a replication Of Gaesser et al (2014) imagine helping experiment. Specifically we replicated the protocol for study 2 in that study. 
+This contains analysis of IPE, in essense we conducted a replication Of Gaesser and Schacter (2014) imagine helping experiment. Specifically, we replicated the protocol for study 2 in that study in a NZ sample. 
 
 **Participants and trial numbers:**
 A total of 40 participants are included in this dataset, each participants completed 30 trials thus the total number of trials is 40x30= 1200. 32 trials were deleted due to written description not matching the condition requirement or other issues. Thus, the total number of trials = 1168.
@@ -137,41 +137,6 @@ final_model<- lmer(help.response~Condition+(dummy_img+dummy_est|Participant)+(1|
 anova(zcp_model_rm,final_model, refit=F)
 anova(final_model, test='kenward-roger')
 confint(final_model)
-```
-
-###test: different coding methods
-```{r}
-#testing different coding
-test<- interaction.df
-#effect coding
-test$dummy<- ifelse(test$Condition=='Imagine', 1,-1)
-test$gender_C<- ifelse(test$Gender=='1', 1,-1)
-test$Condition<-relevel(test$Condition, ref='Imagine' )
-test$Gender<-relevel(test$Gender, ref='1' )
-contrasts(test$Condition)<-contr.sum(nlevels(test$Condition))
-contrasts(test$Gender)<- contr.sum(nlevels(test$Gender))
-x<- lmer(help.response~Condition*Gender+(1|Participant)+(1|Story_ID), data= test)
-c<- lmer(help.response~dummy*gender_C+(1|Participant)+(1|Story_ID), data= test)
-summary(x);summary(c)
-emmeans(x, pairwise~Condition*Gender, adjust= 'bonferroni')
-#Dummy coding
-test$dummy2<- ifelse(test$Condition=='Imagine', 1,0)
-test$gender_C2<- ifelse(test$Gender=='1', 1,0)
-test$Condition<-relevel(test$Condition, ref='Estimate' )
-test$Gender<-relevel(test$Gender, ref='0' )
-x2<- lmer(help.response~Condition*Gender+(1|Participant)+(1|Story_ID),contrasts = list(Condition= contr.treatment, Gender=contr.treatment), data= test)
-c2<-lmer(help.response~dummy2*gender_C2+(1|Participant)+(1|Story_ID), data= test)
-summary(x2);summary(c2)
-emmeans(x2, pairwise~Condition*Gender, adjust= 'bonferroni')
-#successive difference coding 
-test$dummy3<- ifelse(test$Condition=='Imagine', 0.5,-0.5)
-test$gender_C3<- ifelse(test$Gender=='1', 0.5,-0.5)
-contrasts(test$Condition)<-MASS::contr.sdif(nlevels(test$Condition))
-contrasts(test$Gender)<- MASS::contr.sdif(nlevels(test$Gender))
-x3<- lmer(help.response~Condition*Gender+(1|Participant)+(1|Story_ID),contrasts = list(Condition= MASS::contr.sdif, Gender=MASS::contr.sdif), data= test)
-c3<-lmer(help.response~dummy3*gender_C3+(1|Participant)+(1|Story_ID), data= test)
-summary(x3);summary(c3)
-emmeans(x3, pairwise~Condition*Gender, adjust= 'bonferroni')
 ```
 ###Post hoc comparison
 ```{r}
@@ -507,144 +472,6 @@ distress_final<- update(distress_final, .~., start= getME(distress_final, 'theta
 summary(distress_final)
 anova(distress_final, test='kenward-roger')
 ```
-
-
-
-
-
-
-#Exploratory
-##Does high empathy ind have greater perspective taking in est condition?
-###ref=0
-```{r}
-emotreact.df$Condition <- relevel(emotreact.df$Condition, ref= 'Identify')
-
-persp_emp_zcp_ref0<- lmer(Perspective.response~Condition*Empathy_MC+ Empathy_C+(dummy_img+dummy_est||Participant)+((dummy_img+dummy_est)*Empathy_MC||Story_ID), data=emotreact.df,REML=F ,control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-persp_emp_step_ref0<-step(persp_emp_zcp_ref0) #remove all in story ID part from Empathy_MC
-
-persp_emp_rm_ref0<- lmer(Perspective.response~Condition*Empathy_MC+ Empathy_C+(dummy_img+dummy_est||Participant)+(Empathy_MC||Story_ID), data=emotreact.df,REML=F ,control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-
-#add correlation
-persp_emp_opt_ref0<- lmer(Perspective.response~Condition*Empathy_MC+ Empathy_C+(dummy_img+dummy_est|Participant)+(Empathy_MC|Story_ID), data=emotreact.df,REML=F ,control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-anova(persp_emp_rm_ref0,persp_emp_opt_ref0)
-
-#final model
-persp_emp_final_ref0<- lmer(Perspective.response~Condition*Empathy_MC+ Empathy_C+(dummy_img+dummy_est|Participant)+(Empathy_MC|Story_ID), data=emotreact.df,REML=T)
-summary(persp_emp_final_ref0)
-anova(persp_emp_final_ref0, test='kenward-roger')
-```
-
-####post hoc test
-```{r}
-emtrends(persp_emp_final_ref0, pairwise~Condition, var='Empathy_MC')
-```
-
-
-###plot the effect
-```{r}
-sd<-sd(emotreact.df$Empathy_MC)
-m<-mean(emotreact.df$Empathy_MC)
-m-sd;m;m+sd;
-ggpredict(persp_emp_final_ref0, c("Condition","Empathy_MC [-1.03,0,1.03]"))%>% plot()
-ggpredict(persp_emp_final_ref0, c("Empathy_MC[-1.03,0,1.03]","Condition"))%>% plot()
-```
-
-##Empathetic individuals increase Perspective taking
-```{r}
-library(lmerTest)
-emotreact.df$Condition<- relevel(emotreact.df$Condition,ref='Estimate')
-
-threeway_zcp_ref1<- lmer (help.response~Condition*Empathy_MC*Perspective_C+Empathy_C+
-                       ((dummy_img+dummy_ident)*Perspective_C||Participant)+
-                   ((dummy_img+dummy_ident)*Empathy_MC*Perspective_C||Story_ID), data=emotreact.df, REML=F,
-                    control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-step(threeway_zcp_ref1) #retain dummy_ident:Perspective_C, dummy_ident:Empathy_MC:Perspective_C,Empathy_MC from story ID and retain dummy_ident:Perspective_C and dummy_img from Participant
-
-#add correlation
-threeway_opt_ref1<- lmer (help.response~Condition*Empathy_MC*Perspective_C+Empathy_C+
-                       (dummy_ident:Perspective_C+dummy_img|Participant)+
-                   (dummy_ident:Perspective_C+ dummy_ident:Empathy_MC:Perspective_C+Empathy_MC|Story_ID), data=emotreact.df, REML=F,
-                    control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-summary(rePCA(threeway_opt_ref1));summary(threeway_opt_ref1) #remove empathy_MC from story ID
-step(threeway_opt_ref1) #remove 3 way interaction from story
-
-threeway_opt2_ref1<- lmer (help.response~Condition*Empathy_MC*Perspective_C+Empathy_C+
-                       (dummy_ident:Perspective_C+dummy_img|Participant)+
-                   (dummy_ident:Perspective_C+Empathy_MC|Story_ID), data=emotreact.df, REML=F,
-                    control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-
-summary(rePCA(threeway_opt2_ref1))
-#final
-threeway_final_ref1<- lmer (help.response~Condition*Empathy_MC*Perspective_C+Empathy_C+
-                       (dummy_ident:Perspective_C+dummy_img|Participant)+
-                   (dummy_ident:Perspective_C+Empathy_MC|Story_ID), data=emotreact.df, REML=T,
-                    control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-summary(threeway_final_ref1)
-```
-##plot
-```{r}
-sd<-sd(emotreact.df$Perspective_C)
-m<-mean(emotreact.df$Perspective_C)
-sd_emp<-sd(emotreact.df$Empathy_MC)
-m_emp<-mean(emotreact.df$Empathy_MC)
-m-sd;m;m+sd;m_emp-sd_emp;m_emp;m_emp+sd_emp;
-ggpredict(threeway_final_ref1, c("Perspective_C[-1.49, 0, 1.49]","Empathy_MC[-1.03,0,1.03]","Condition"))%>% plot()
-ggpredict(threeway_final_ref1, c("Perspective_C[-1.49, 0, 1.49]","Condition","Empathy_MC[-1.03,0,1.03]"))%>% plot()
-```
-
-
-```{r}
-
-test<- lmer(Perspective.response~Condition+(dummy_img+dummy_est|Participant)+(1|Story_ID), data=IPE.df)
-summary(test)
-emmeans(test, pairwise~Condition)
-
-test2<-lmer(Detail.response~Condition+(1|Participant)+(1|Story_ID), data=interaction.df)
-test3<-lmer(Coherence.response~Condition+(dummy_img|Participant)+(1|Story_ID), data=interaction.df)
-emmeans(test2, pairwise~Condition)
-emmeans(test3, pairwise~Condition)
-
-emot_noident<- emotreact.df[emotreact.df$Condition!='Identify',]
-emot_noident$Condition<- droplevels(emot_noident$Condition)
-
-d<- lmer(Perspective.response~Empathy_C+ Empathy_MC+Detail_C+(Empathy_C+Detail_C|Participant)+(Empathy_C|Story_ID), REML=T, data=emot_noident,control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-
-summary (rePCA(d));summary(d)
-
-d2<- lmer(Perspective.response~Empathy_C+Empathy_MC+(Empathy_C|Participant)+(Empathy_C|Story_ID), REML=T, data=emotreact.df,control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-
-summary(d);summary(d2)
-
-
-med.d<- lmer(Detail.response~Empathy_C+ Empathy_MC+(Empathy_C|Participant), REML=T, data=emot_noident,control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-summary (med.d);summary(medout.d2)
-medout.d2<- lmer(Perspective_SC~Empathy_C+Empathy_MC+Detail.response+(Empathy_C+Detail.response|Participant), REML=T, data=emot_noident,control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-med.out_d<- mediate (med.d, medout.d2, treat='Empathy_MC', mediator = 'Detail.response', boot=F, sims =1000)
-summary(med.out_d)
-
-
-med.coh<- lmer(Coherence.response~Empathy_C+ Empathy_MC+(Empathy_C|Participant), REML=T, data=emot_noident,control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-summary (med.d);summary(medout.d2)
-medout.coh<- lmer(Perspective_SC~Empathy_C+Empathy_MC+Coherence.response+(Empathy_C+Coherence.response|Participant), REML=T, data=emot_noident,control=lmerControl(optimizer="optimx",optCtrl=list(method='nlminb')))
-med.out_coh<- mediate (med.coh, medout.coh, treat='Empathy_MC', mediator = 'Coherence.response', boot=F, sims =1000)
-summary(med.out_coh)
-#high empathy individual increase perspective taking and part of this is due to increased detail & coherence
-
-```
-#see if version changes the detail relationship in estimate condition
-```{r}
-est.df<- IPE.df[IPE.df$Condition=='Estimate',]
-est.df$Version_C<- ifelse(est.df$Version==1,1,-1)
-test<- lmer (help.response~Version_C*Detail_C+(1|Participant)+(1|Story_ID), data=est.df)
-summary(test)
-r2(test)
-```
-
-
-
-
-
-
 
 
 
